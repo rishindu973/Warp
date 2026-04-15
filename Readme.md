@@ -3,6 +3,6 @@
        alt="ascii-animation" 
        width="768" height="320" />
   <div style="margin-top: 10px; font-family: monospace; font-size: 20px;">
-    \/\/-/\R|>
+    \/\//-\R|>
   </div>
 </div>
