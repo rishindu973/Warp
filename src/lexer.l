@@ -21,6 +21,6 @@
 
 %%
 
-int yywarp() {
+int yywrap() {
     return 1;
 }
