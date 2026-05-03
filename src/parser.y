@@ -3,12 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Forward declarations */
 void yyerror(const char *msg);
 int  yylex(void);
 extern int yylineno;
 
-/* Symbol Table Logic */
 #define MAX_TASKS 64
 
 typedef struct Task {
@@ -17,35 +15,68 @@ typedef struct Task {
     char *schedule;
     char *depends_on;
     char *condition;
+    int   visited;  
+    int   in_stack; 
 } Task;
 
 static Task tasks[MAX_TASKS];
 static int  task_count = 0;
 
-/* Temporary storage for the task currently being parsed */
-static char *cur_name      = NULL;
-static char *cur_script    = NULL;
-static char *cur_schedule  = NULL;
-static char *cur_depends   = NULL;
-static char *cur_condition = NULL;
+static char *cur_name = NULL, *cur_script = NULL, *cur_schedule = NULL, *cur_depends = NULL, *cur_condition = NULL;
+
+/* Helper: Find a task index by its name */
+static int find_task(const char *name) {
+    for (int i = 0; i < task_count; i++)
+        if (strcmp(tasks[i].name, name) == 0) return i;
+    return -1;
+}
 
 static void register_task(void) {
-    if (task_count >= MAX_TASKS) {
-        fprintf(stderr, "[Error] Too many tasks (max %d)\n", MAX_TASKS);
-        exit(1);
-    }
-    
-    tasks[task_count].name        = cur_name;
-    tasks[task_count].script      = cur_script;
-    tasks[task_count].schedule    = cur_schedule;
-    tasks[task_count].depends_on  = cur_depends;
-    tasks[task_count].condition   = cur_condition;
+    if (task_count >= MAX_TASKS) { exit(1); }
+    tasks[task_count].name = cur_name;
+    tasks[task_count].script = cur_script;
+    tasks[task_count].schedule = cur_schedule;
+    tasks[task_count].depends_on = cur_depends;
+    tasks[task_count].condition = cur_condition;
+    /* Initialize flags */
+    tasks[task_count].visited = 0;
+    tasks[task_count].in_stack = 0;
     task_count++;
-
-    printf("[Internal] Registered Task: %s\n", cur_name);
-
-    /* Reset all temporary variables for the next task block */
     cur_name = cur_script = cur_schedule = cur_depends = cur_condition = NULL;
+}
+
+/* Semantic Logic: Cycle Detection */
+static int detect_cycle(int i) {
+    if (tasks[i].in_stack) return 1; /* Found a back-edge (cycle) */
+    if (tasks[i].visited)  return 0; /* Already checked this path */
+
+    tasks[i].visited  = 1;
+    tasks[i].in_stack = 1;
+
+    if (tasks[i].depends_on) {
+        int j = find_task(tasks[i].depends_on);
+        if (j == -1) {
+            fprintf(stderr, "[Semantic Error] Task '%s' depends on unknown task '%s'\n", tasks[i].name, tasks[i].depends_on);
+            exit(1);
+        }
+        if (detect_cycle(j)) return 1;
+    }
+
+    tasks[i].in_stack = 0; /* Backtrack */
+    return 0;
+}
+
+static void run_semantic_checks(void) {
+    printf("Running Semantic Analysis...\n");
+    for (int i = 0; i < task_count; i++) {
+        if (detect_cycle(i)) {
+            fprintf(stderr, "[Semantic Error] Circular dependency detected involving task '%s'!\n", tasks[i].name);
+            exit(1);
+        }
+    }
+    /* Reset visited flags for the next phase (simulation) */
+    for (int i = 0; i < task_count; i++) tasks[i].visited = 0;
+    printf("Semantic Analysis passed: No cycles or unknown dependencies found.\n");
 }
 %}
 
@@ -68,7 +99,10 @@ static void register_task(void) {
 
 program
     : task_list
-        { printf("\nParsing Complete. Total tasks found: %d\n", task_count); }
+        { 
+            /* Trigger semantic checks after the whole file is parsed */
+            run_semantic_checks(); 
+        }
     ;
 
 task_list
