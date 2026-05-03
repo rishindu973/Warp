@@ -1,9 +1,11 @@
 %{
 #include <stdio.h>
 #include <string.h>
-#include "../include/tokens.h"
 #include "parser.tab.h"
 %}
+
+%option noyywrap
+%option yylineno
 
 %%
 

@@ -1,0 +1,5 @@
+# Test 1: Simple daily recurring scheduled task
+TASK dailyReport {
+    RUN "report.py"
+    AT 06:00
+}
