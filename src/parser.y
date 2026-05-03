@@ -3,13 +3,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-
-/* Forward declarations for Bison */
+/* Forward declarations */
 void yyerror(const char *msg);
 int  yylex(void);
 extern int yylineno;
 
-/* Symbol Table */
+/* Symbol Table Logic */
 #define MAX_TASKS 64
 
 typedef struct Task {
@@ -23,9 +22,12 @@ typedef struct Task {
 static Task tasks[MAX_TASKS];
 static int  task_count = 0;
 
-/* Working storage for the task currently being parsed */
-static char *cur_name     = NULL;
-static char *cur_script   = NULL;
+/* Temporary storage for the task currently being parsed */
+static char *cur_name      = NULL;
+static char *cur_script    = NULL;
+static char *cur_schedule  = NULL;
+static char *cur_depends   = NULL;
+static char *cur_condition = NULL;
 
 static void register_task(void) {
     if (task_count >= MAX_TASKS) {
@@ -33,19 +35,20 @@ static void register_task(void) {
         exit(1);
     }
     
-    tasks[task_count].name   = cur_name;
-    tasks[task_count].script = cur_script;
+    tasks[task_count].name        = cur_name;
+    tasks[task_count].script      = cur_script;
+    tasks[task_count].schedule    = cur_schedule;
+    tasks[task_count].depends_on  = cur_depends;
+    tasks[task_count].condition   = cur_condition;
     task_count++;
 
     printf("[Internal] Registered Task: %s\n", cur_name);
 
-    /* Reset temporary storage for the next task */
-    cur_name   = NULL;
-    cur_script = NULL;
+    /* Reset all temporary variables for the next task block */
+    cur_name = cur_script = cur_schedule = cur_depends = cur_condition = NULL;
 }
 %}
 
-/* Token Value Union */
 %union {
     char *strval;
 }
@@ -61,7 +64,7 @@ static void register_task(void) {
 
 %%
 
-/* Grammar Rules*/
+/* Grammar Rules */
 
 program
     : task_list
@@ -76,8 +79,8 @@ task_list
 task
     : TOKEN_TASK TOKEN_IDENTIFIER TOKEN_LBRACE body TOKEN_RBRACE
         {
-            cur_name = $2;     /* Capture the task name from $2 (TOKEN_IDENTIFIER) */
-            register_task();    /* Save to symbol table */
+            cur_name = $2;
+            register_task();
         }
     ;
 
@@ -95,22 +98,57 @@ statement
 
 run_stmt
     : TOKEN_RUN TOKEN_STRING
-        { cur_script = $2; }    /* Capture the script command from $2 (TOKEN_STRING) */
+        { cur_script = $2; }
     ;
 
-/* Placeholders for schedules, dependencies, and conditions */
-schedule_stmt  : TOKEN_AT TOKEN_TIME ;
-after_stmt     : TOKEN_AFTER TOKEN_IDENTIFIER ;
-condition_stmt : TOKEN_IF TOKEN_SUCCESS ;
+/* Detailed scheduling logic */
+schedule_stmt
+    : TOKEN_EVERY TOKEN_DAY TOKEN_AT TOKEN_TIME
+        {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "EVERY DAY AT %s", $4);
+            cur_schedule = strdup(buf);
+            free($4);
+        }
+    | TOKEN_EVERY TOKEN_WEEK TOKEN_ON day TOKEN_AT TOKEN_TIME
+        {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "EVERY WEEK ON <day> AT %s", $6);
+            cur_schedule = strdup(buf);
+            free($6);
+        }
+    | TOKEN_AT TOKEN_TIME
+        {
+            char buf[32];
+            snprintf(buf, sizeof(buf), "AT %s", $2);
+            cur_schedule = strdup(buf);
+            free($2);
+        }
+    ;
+
+day
+    : TOKEN_SUNDAY | TOKEN_MONDAY | TOKEN_TUESDAY | TOKEN_WEDNESDAY
+    | TOKEN_THURSDAY | TOKEN_FRIDAY | TOKEN_SATURDAY
+    ;
+
+after_stmt
+    : TOKEN_AFTER TOKEN_IDENTIFIER
+        { cur_depends = $2; }
+    ;
+
+condition_stmt
+    : TOKEN_IF TOKEN_SUCCESS
+        { cur_condition = strdup("success"); }
+    | TOKEN_IF TOKEN_FAILURE
+        { cur_condition = strdup("failure"); }
+    ;
 
 %%
 
-/*Error Handle*/
 void yyerror(const char *msg) {
     fprintf(stderr, "[Syntax Error] %s near line %d\n", msg, yylineno);
 }
 
-/* Main Entry Point */
 int main(int argc, char *argv[]) {
     extern FILE *yyin;
     if (argc > 1) {
