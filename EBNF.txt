@@ -1,5 +1,4 @@
   TaskLang++ — Formal Grammar (EBNF)
-  Derived from: src/parser.y
   Project: Warp Compiler v1.0
   Course:  SE2052 – Programming Paradigms
 
