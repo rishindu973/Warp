@@ -6,6 +6,8 @@
 
 %option noyywrap
 %option yylineno
+%option noinput
+%option nounput
 
 %%
 

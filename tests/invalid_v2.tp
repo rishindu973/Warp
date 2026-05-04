@@ -1,0 +1,4 @@
+# Test 6: Invalid - task body has no RUN statement
+TASK emptyTask {
+    EVERY DAY AT 10:00
+}

@@ -1,0 +1,10 @@
+# Test 3: Weekly task and AT-only schedule
+TASK weeklyAudit {
+    RUN "audit.py"
+    EVERY WEEK ON MONDAY AT 09:00
+}
+
+TASK nightBackup {
+    RUN "backup_full.sh"
+    AT 23:30
+}

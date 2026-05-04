@@ -1,0 +1,17 @@
+# Test 4: Deep dependency chain (A → B → C)
+TASK fetchData {
+    RUN "fetch.py"
+    EVERY DAY AT 01:00
+}
+
+TASK processData {
+    RUN "process.py"
+    AFTER fetchData
+    IF success
+}
+
+TASK generateReport {
+    RUN "report.py"
+    AFTER processData
+    IF success
+}

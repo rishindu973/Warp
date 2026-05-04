@@ -1,0 +1,10 @@
+# Test 7: Invalid - circular dependency (A depends on B, B depends on A)
+TASK taskA {
+    RUN "a.sh"
+    AFTER taskB
+}
+
+TASK taskB {
+    RUN "b.sh"
+    AFTER taskA
+}

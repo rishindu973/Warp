@@ -1,0 +1,6 @@
+# Test 8: Invalid - AFTER references a task that does not exist
+TASK orphanTask {
+    RUN "orphan.sh"
+    AFTER nonExistentTask
+    IF success
+}
